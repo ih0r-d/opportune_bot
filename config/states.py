@@ -1,0 +1,10 @@
+from enum import Enum
+
+
+class States(Enum):
+    STATE_START = 0
+    STATE_NEW_EVENT = 1
+    STATE_SETTING_TIMEZONE_SEPARATE = 2
+    STATE_SETTING_TIMEZONE_FOR_EVENT = 3
+    STATE_SETTING_TIME = 4
+    STATE_SETTING_TEXT = 5
