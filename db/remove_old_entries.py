@@ -1,4 +1,4 @@
-from config.config import database_schedules_file, log_name
+from config.properties import database_schedules_file, log_name
 from db.sql_instance import SQLInstance
 from time import time
 import logging

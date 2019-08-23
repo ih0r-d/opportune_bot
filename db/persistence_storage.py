@@ -21,7 +21,7 @@ class NoKeyError(Exception):
 
 
 class PersistenceStorage:
-    def __init__(self, database):
+    def __init__(self, database: object) -> object:
         self.storage = shelve.open(database)
 
     def create_key(self, key):
