@@ -34,7 +34,7 @@ class SQLInstance:
                 return None
 
     def count_entries_for_id(self, chat_id):
-        result = self.cursor.execute('SELECT Id FROM Schedules WHERE Chat_id=?', (int(chat_id),))
+        result = self.cursor.execute('SELECT Id FROM Schedules WHERE Chat_id=?', int(chat_id))
         return len(result.fetchall())
 
     def insert(self, chat_id, time, job_id):
