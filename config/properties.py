@@ -6,7 +6,7 @@ log_name = 'opportune_bot'  # Log file name
 log_level: str = 'debug'  # debug, info, warning, error
 
 # Server offset from GMT (f.ex Ukraine is 2)
-server_offset = 0
+server_offset = 2
 
 database_offsets_file = 'users_offsets'
 database_states_file = 'state_storage'

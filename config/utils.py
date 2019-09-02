@@ -11,6 +11,8 @@ from datetime import datetime
 from db.sql_instance import SQLInstance
 import config.utils
 from lang.ua import error_date_in_past, error_after_2022, error_incorrect_date, error_incorrect_input
+import tempfile
+from subprocess import call
 
 
 class PastDateError(Exception):
@@ -34,6 +36,7 @@ regexp_time_zone = re.compile(r'([0-9]|[01][0-9]|2[0-3]):[0-5][0-9]')
 regexp_date_enhanced = re.compile(r'([0-9]|[01][0-9]|2[0-3]):[0-5][0-9] ([0-2][0-9]|3[0-1]).([1-9]|0[1-9]|1[0-2]).(2['
                                   r'0-9][1-9][0-9])')
 
+# regexp_date_enhanced = re.compile("(24:00|2[0-3]:[0-5][0-9]|[0-1][0-9]:[0-5][0-9])")
 regexp_timezone = re.compile(r'0|[+-][0-9]|[+-]1[0-6]', re.MULTILINE)
 
 
@@ -99,7 +102,8 @@ def close_storage():
 
 
 def get_unix_time_from_date(date_string):
-    return int(mktime(datetime.strptime(date_string, '%H:%M %d.%m.%Y').timetuple()))
+    res = int(mktime(datetime.strptime(date_string, '%H:%M %d.%m.%Y').timetuple()))
+    return res
 
 
 def get_user_date(offset):
@@ -109,7 +113,8 @@ def get_user_date(offset):
 def convert_user_time_to_local(text, offset):
     if offset == 0:
         return text
-    return datetime.fromtimestamp(config.utils.get_unix_time_from_date(text) - (3600 * offset)).strftime('%H:%M %d.%m.%Y')
+    return datetime.fromtimestamp(get_unix_time_from_date(text) - (3600 * offset)).strftime(
+        '%H:%M %d.%m.%Y')
 
 
 def convert_user_time_to_at_command(text, offset):
@@ -122,16 +127,25 @@ def convert_user_time_to_at_command(text, offset):
 
 
 def convert_user_time_to_local_timestamp(text, offset):
-    return config.utils.get_unix_time_from_date(text) - (3600 * offset)
+    return get_unix_time_from_date(text) - (3600 * offset)
 
 
 def is_valid_datetime(text, offset):
     try:
-        entered_time = config.utils.get_unix_time_from_date(text)
-        if (entered_time - (3600 * offset)) < (time() - (3600 * server_offset)):
-            raise PastDateError(error_date_in_past)
-        if entered_time > DATE_01_01_2022:
-            raise ParseError(error_after_2022)
+        entered_time = get_unix_time_from_date(text)
+        print(entered_time)
+        # a = entered_time - 3600 * offset
+        # b = time() - 3600 * server_offset
+        #
+        # print(a)
+        # print(b)
+        # print(a < b)
+        # print(a - b)
+        #
+        # if (a < b):
+        #     raise PastDateError(error_date_in_past)
+        # if entered_time > DATE_01_01_2022:
+        #     raise ParseError(error_after_2022)
     except ValueError:
         raise ParseError(error_incorrect_date)
     except OverflowError:
@@ -140,17 +154,16 @@ def is_valid_datetime(text, offset):
 
 
 def parse_time(text, user_timezone):
-    global time_regexp
-    if re.search(config.utils.regexp_date_enhanced, text) is not None:
-        txt = re.search(config.utils.regexp_date_enhanced, text).group()
+    global regexp_date_enhanced
+    if re.search(regexp_date_enhanced, text) is not None:
+        txt = re.search(regexp_date_enhanced, text).group()
         if is_valid_datetime(txt, user_timezone):
             return txt
         else:
             raise ParseError(error_incorrect_input)
     else:
-        if re.search(time_regexp, text) is not None:
-            time_with_date = \
-                str(re.search(time_regexp, text).group()) + ' ' + get_user_date(user_timezone)
+        if re.search(regexp_date_enhanced, text) is not None:
+            time_with_date = str(re.search(regexp_date_enhanced, text).group()) + ' ' + get_user_date(user_timezone)
             if is_valid_datetime(time_with_date, user_timezone):
                 return time_with_date
             else:
@@ -158,8 +171,8 @@ def parse_time(text, user_timezone):
 
 
 def parse_time_zone(text):
-    global regex
-    match_results = re.search(regex, text.lstrip())
+    global regexp_time_zone
+    match_results = re.search(regexp_time_zone, text.lstrip())
     if match_results is None:
         try:
             num = int(text.lstrip())
@@ -174,6 +187,22 @@ def parse_time_zone(text):
         return int(match_results.group())
 
 
+def set_new_at_job(chat_id, time, text):
+    tmp = tempfile.NamedTemporaryFile(mode='r+t')
+    # Actually, sender.py will send message
+    command = 'echo "./sender.py {0!s} \'{2!s}\'" | at {1!s}'.format(chat_id, time, text)
+    # Because of some warnings, all data is sent to stderr instead of stdout.
+    # But it's normal
+    call(command, shell=True, stderr=tmp)
+    tmp.seek(0)
+    for line in tmp:
+        if 'job' in line:
+            return line.split()[1]
+    tmp.close()
+    return None
+
+
 if __name__ == '__main__':
-    print(get_user_date(5))
+    # print(get_user_date(5))
+    print(get_unix_time_from_date('22:21 02.09.2019'))
     pass
